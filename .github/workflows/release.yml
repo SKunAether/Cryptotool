@@ -9,42 +9,60 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     strategy:
       matrix:
-        include:
-          - platform: 'ubuntu-latest'
-            target: 'amd64'
-            args: ''
-          - platform: 'windows-latest'
-            target: 'x64'
-            args: ''
-          - platform: 'macos-latest'
-            target: 'universal'
-            args: '--universal'
-    runs-on: ${{ matrix.platform }}
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
         with:
           version: 8
-      - uses: actions/setup-node@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
-      - name: Install dependencies
+      
+      # ----- Linux 依赖安装（仅 Ubuntu）-----
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            libxcb1-dev \
+            libx11-xcb1 \
+            libxcb-shape0 \
+            libxcb-xfixes0 \
+            libxkbcommon0 \
+            libwayland-client0 \
+            libwayland-cursor0 \
+            libwayland-egl1
+      
+      # ----- 安装前端依赖（强制忽略 workspace）-----
+      - name: Install frontend dependencies
         run: pnpm install --ignore-workspace
         shell: bash
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
+      
+      # ----- 构建 Tauri 应用 -----
+      - name: Build application
+        run: pnpm tauri build
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      
+      # ----- 上传构建产物 -----
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v2
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: ${{ github.ref_name }}
-          releaseBody: 'See [CHANGELOG.md](https://github.com/SKunAether/Cryptotool/blob/main/CHANGELOG.md) for details.'
-          releaseDraft: false
-          prerelease: false
-          args: ${{ matrix.args }}
+          files: |
+            src-tauri/target/release/bundle/**/*.{deb,msi,dmg,sig}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
