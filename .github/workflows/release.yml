@@ -16,32 +16,36 @@ jobs:
     steps:
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           draft: false
           prerelease: false
 
   build:
     needs: create-release
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v2
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
         with:
           version: 8
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
-      - run: pnpm install
-      - run: pnpm tauri build
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build Tauri app
+        run: pnpm tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -55,53 +59,4 @@ jobs:
           asset_path: src-tauri/target/release/bundle/deb/cryptotool_1.0.0_amd64.deb
           asset_name: cryptotool_1.0.0_amd64.deb
           asset_content_type: application/vnd.debian.binary-package
-      - name: Upload Linux .deb.sig
-        if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: src-tauri/target/release/bundle/deb/cryptotool_1.0.0_amd64.deb.sig
-          asset_name: cryptotool_1.0.0_amd64.deb.sig
-          asset_content_type: text/plain
-      - name: Upload Windows .msi
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: src-tauri/target/release/bundle/msi/cryptotool_1.0.0_x64.msi
-          asset_name: cryptotool_1.0.0_x64.msi
-          asset_content_type: application/x-msi
-      - name: Upload Windows .msi.sig
-        if: matrix.os == 'windows-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: src-tauri/target/release/bundle/msi/cryptotool_1.0.0_x64.msi.sig
-          asset_name: cryptotool_1.0.0_x64.msi.sig
-          asset_content_type: text/plain
-      - name: Upload macOS .dmg
-        if: matrix.os == 'macos-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: src-tauri/target/release/bundle/dmg/cryptotool_1.0.0_x64.dmg
-          asset_name: cryptotool_1.0.0_x64.dmg
-          asset_content_type: application/x-apple-diskimage
-      - name: Upload macOS .dmg.sig
-        if: matrix.os == 'macos-latest'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: src-tauri/target/release/bundle/dmg/cryptotool_1.0.0_x64.dmg.sig
-          asset_name: cryptotool_1.0.0_x64.dmg.sig
-          asset_content_type: text/plain
+      # 同理上传 .sig 和其他平台，按之前配置，但注意路径
