@@ -16,28 +16,38 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:
           version: 8
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
-      
-      # ----- 强制移除 workspace 配置 -----
-      - name: Remove workspace config
+
+      # ---------- 关键：移除 workspace 配置 ----------
+      - name: Remove workspace configuration
         run: |
+          # 删除 pnpm-workspace.yaml（如果存在）
           rm -f pnpm-workspace.yaml
-          if [ -f package.json ]; then
-            node -e "const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('package.json')); delete pkg.workspaces; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+          # 从 package.json 中移除 workspaces 字段
+          if command -v jq >/dev/null 2>&1; then
+            if jq -e '.workspaces' package.json >/dev/null 2>&1; then
+              jq 'del(.workspaces)' package.json > package.json.tmp && mv package.json.tmp package.json
+              echo "Removed 'workspaces' field from package.json"
+            else
+              echo "No 'workspaces' field found in package.json"
+            fi
+          else
+            # 如果 jq 不可用，使用 sed 简单移除（可能不够健壮，但作为备选）
+            sed -i '/"workspaces"/d' package.json || true
           fi
         shell: bash
-      
-      # ----- Linux 依赖 -----
+
+      # ---------- Linux 依赖 ----------
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -46,22 +56,30 @@ jobs:
             libgtk-3-dev \
             libwebkit2gtk-4.1-dev \
             libxdo-dev \
+            libglib2.0-dev \
             libxcb1-dev \
-            libglib2.0-dev
-      
-      # ----- 安装前端依赖 -----
-      - name: Install dependencies
+            libx11-xcb1 \
+            libxcb-shape0 \
+            libxcb-xfixes0 \
+            libxkbcommon0 \
+            libwayland-client0 \
+            libwayland-cursor0 \
+            libwayland-egl1
+        shell: bash
+
+      # ---------- 安装依赖 ----------
+      - name: Install frontend dependencies
         run: pnpm install
         shell: bash
-      
-      # ----- 构建 -----
+
+      # ---------- 构建 ----------
       - name: Build application
         run: pnpm tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-      
-      # ----- 上传产物 -----
+
+      # ---------- 上传产物 ----------
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
