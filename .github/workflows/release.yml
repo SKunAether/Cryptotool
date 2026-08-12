@@ -28,7 +28,16 @@ jobs:
           node-version: 20
           cache: 'pnpm'
       
-      # ----- Linux 依赖安装（仅 Ubuntu）-----
+      # ----- 强制移除 workspace 配置 -----
+      - name: Remove workspace config
+        run: |
+          rm -f pnpm-workspace.yaml
+          if [ -f package.json ]; then
+            node -e "const fs=require('fs'); const pkg=JSON.parse(fs.readFileSync('package.json')); delete pkg.workspaces; fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+          fi
+        shell: bash
+      
+      # ----- Linux 依赖 -----
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -38,27 +47,21 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libxdo-dev \
             libxcb1-dev \
-            libx11-xcb1 \
-            libxcb-shape0 \
-            libxcb-xfixes0 \
-            libxkbcommon0 \
-            libwayland-client0 \
-            libwayland-cursor0 \
-            libwayland-egl1
+            libglib2.0-dev
       
-      # ----- 安装前端依赖（强制忽略 workspace）-----
-      - name: Install frontend dependencies
-        run: pnpm install --ignore-workspace
+      # ----- 安装前端依赖 -----
+      - name: Install dependencies
+        run: pnpm install
         shell: bash
       
-      # ----- 构建 Tauri 应用 -----
+      # ----- 构建 -----
       - name: Build application
         run: pnpm tauri build
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
       
-      # ----- 上传构建产物 -----
+      # ----- 上传产物 -----
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v2
         with:
