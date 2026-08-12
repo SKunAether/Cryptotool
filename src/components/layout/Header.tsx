@@ -2,6 +2,7 @@ import { Minus, Square, X, Moon, Sun, ArrowLeft } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useThemeStore } from "../../stores/themeStore";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 interface HeaderProps {
   title?: string;
@@ -12,13 +13,28 @@ interface HeaderProps {
 export function Header({ title = 'CryptoTool', badge, showBack }: HeaderProps) {
   const toggleTheme = useThemeStore((s) => s.toggleTheme);
   const theme = useThemeStore((s) => s.theme);
-  const appWindow = getCurrentWindow();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [appWindow, setAppWindow] = useState<any>(null);
 
-  const handleMinimize = () => appWindow.minimize();
-  const handleMaximize = () => appWindow.toggleMaximize();
-  const handleClose = () => appWindow.close();
+  useEffect(() => {
+    // 获取窗口实例并初始化状态
+    const win = getCurrentWindow();
+    setAppWindow(win);
+    if (win) {
+      win.isMaximized().then(setIsMaximized).catch(() => { });
+      const unlisten = win.onResized(async () => {
+        const max = await win.isMaximized();
+        setIsMaximized(max);
+      });
+      return () => { unlisten.then(fn => fn()); };
+    }
+  }, []);
+
+  const handleMinimize = () => appWindow?.minimize();
+  const handleMaximize = () => appWindow?.toggleMaximize();
+  const handleClose = () => appWindow?.close();
 
   return (
     <header
@@ -64,7 +80,11 @@ export function Header({ title = 'CryptoTool', badge, showBack }: HeaderProps) {
           <Minus size={16} />
         </button>
         <button className="title-btn" onClick={handleMaximize}>
-          <Square size={13} />
+          {isMaximized ? (
+            <Square size={13} strokeWidth={1.5} />
+          ) : (
+            <Square size={13} />
+          )}
         </button>
         <button className="title-btn close-btn" onClick={handleClose}>
           <X size={16} />

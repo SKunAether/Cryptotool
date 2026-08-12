@@ -1,4 +1,5 @@
-#[allow(dead_code)]
+#![allow(dead_code)]
+
 pub const CRACK_UPDATE: &str = "crack-update";
 pub const HISTORY_UPDATE: &str = "history-update";
 pub const HASH_PROGRESS: &str = "hash-progress";

@@ -16,6 +16,13 @@ import { Card } from '../../components/common/Card';
 
 type TabKey = 'general' | 'window' | 'about';
 
+interface UpdateInfo {
+  latest_version: string;
+  current_version: string;
+  update_available: boolean;
+  release_url: string;
+}
+
 export function SettingsView() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -24,23 +31,42 @@ export function SettingsView() {
   const { providers } = useProviderStore();
   const { privacyMode, togglePrivacy } = usePrivacyStore();
   const [appVersion, setAppVersion] = useState('1.0.0');
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
 
-  // 窗口行为状态
   const [autoStart, setAutoStart] = useState(false);
   const [silentStart, setSilentStart] = useState(() => localStorage.getItem('ct-silent-start') === 'true');
   const [closeToTray, setCloseToTray] = useState(() => localStorage.getItem('ct-close-tray') !== 'false');
 
   useEffect(() => {
-    invokeCmd<string>('get_app_version').then(v => setAppVersion(v)).catch(() => {});
-    invokeCmd<boolean>('get_autostart_status').then(setAutoStart).catch(() => {});
+    invokeCmd<string>('get_app_version').then(v => setAppVersion(v)).catch(() => { });
+    invokeCmd<boolean>('get_autostart_status').then(setAutoStart).catch(() => { });
   }, []);
 
   const handleToggleAutostart = async (enabled: boolean) => {
-    try { await invokeCmd('toggle_autostart', { enabled }); setAutoStart(enabled); } catch {}
+    try { await invokeCmd('toggle_autostart', { enabled }); setAutoStart(enabled); } catch { }
   };
 
   const handleSilentChange = (v: boolean) => { setSilentStart(v); localStorage.setItem('ct-silent-start', String(v)); };
   const handleTrayChange = (v: boolean) => { setCloseToTray(v); localStorage.setItem('ct-close-tray', String(v)); };
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      const info = await invokeCmd<UpdateInfo>('check_update');
+      setUpdateInfo(info);
+    } catch (err) {
+      console.error(err);
+      alert(t('settings.about.update_failed'));
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  // ========== 统一调用后端 open_external 命令 ==========
+  const openLink = (url: string) => {
+    invokeCmd('open_external', { url }).catch(err => console.error('打开链接失败:', err));
+  };
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'general', label: t('settings.tabs.general') },
@@ -50,7 +76,6 @@ export function SettingsView() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
-      {/* 返回标题 */}
       <div className="flex items-center gap-3 mb-1">
         <button
           onClick={() => navigate('/')}
@@ -64,7 +89,6 @@ export function SettingsView() {
         <h1 className="text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>{t('settings.title')}</h1>
       </div>
 
-      {/* Pill 标签 */}
       <div
         className="flex p-1 rounded-xl"
         style={{ backgroundColor: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.12)' }}
@@ -85,7 +109,6 @@ export function SettingsView() {
         ))}
       </div>
 
-      {/* 内容 */}
       <div className="space-y-4">
         {activeTab === 'general' && (
           <>
@@ -200,18 +223,64 @@ export function SettingsView() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <IconBtn icon={Globe} label={t('settings.about.official_site')} onClick={() => window.open('https://crypto-tool.app', '_blank')} />
-                <IconBtn icon={Github} label={t('settings.about.github')} onClick={() => window.open('https://github.com/crypto-tool', '_blank')} />
-                <IconBtn icon={ExternalLink} label={t('settings.about.changelog')} onClick={() => window.open('https://github.com/crypto-tool/releases', '_blank')} />
                 <button
-                  onClick={() => alert('Coming soon')}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm text-white transition-colors"
+                  onClick={() => openLink('https://crypto-tool.app')}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-sm transition-colors"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+                >
+                  <Globe className="w-3.5 h-3.5" /> {t('settings.about.official_site')}
+                </button>
+                <button
+                  onClick={() => openLink('https://github.com/crypto-tool')}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-sm transition-colors"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+                >
+                  <Github className="w-3.5 h-3.5" /> {t('settings.about.github')}
+                </button>
+                <button
+                  onClick={() => openLink('https://github.com/crypto-tool/releases')}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-sm transition-colors"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> {t('settings.about.changelog')}
+                </button>
+                <button
+                  onClick={handleCheckUpdate}
+                  disabled={checkingUpdate}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm text-white transition-colors disabled:opacity-50"
                   style={{ backgroundColor: 'var(--color-primary)' }}
                 >
-                  <RefreshCw className="w-3.5 h-3.5" /> {t('settings.about.check_update')}
+                  <RefreshCw className={`w-3.5 h-3.5 ${checkingUpdate ? 'animate-spin' : ''}`} />
+                  {checkingUpdate ? t('settings.about.checking') : t('settings.about.check_update')}
                 </button>
               </div>
             </div>
+
+            {updateInfo && (
+              <div
+                className="mt-4 p-4 rounded-xl border"
+                style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-background)' }}
+              >
+                {updateInfo.update_available ? (
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: 'var(--color-success)' }}>
+                      🎉 {t('settings.about.update_available', { version: updateInfo.latest_version })}
+                    </p>
+                    <button
+                      onClick={() => openLink(updateInfo.release_url)}
+                      className="text-sm underline mt-1 inline-block cursor-pointer"
+                      style={{ color: 'var(--color-primary)', background: 'none', border: 'none' }}
+                    >
+                      {t('settings.about.download_now')}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    ✅ {t('settings.about.up_to_date', { version: updateInfo.latest_version })}
+                  </p>
+                )}
+              </div>
+            )}
           </Card>
         )}
       </div>
@@ -219,6 +288,7 @@ export function SettingsView() {
   );
 }
 
+// ========== 辅助组件 ==========
 function PillBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -247,18 +317,6 @@ function ThemeBtn({ active, onClick, icon: Icon, label }: any) {
       }}
     >
       <Icon className="w-4 h-4" /> {label}
-    </button>
-  );
-}
-
-function IconBtn({ icon: Icon, label, onClick }: { icon: any; label: string; onClick?: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-sm transition-colors"
-      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}
-    >
-      <Icon className="w-3.5 h-3.5" /> {label}
     </button>
   );
 }

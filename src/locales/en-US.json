@@ -155,5 +155,19 @@
   "settings.general": "General",
   "settings.display_apps": "Display on Homepage",
   "settings.display_apps_desc": "Select shortcuts to display on the homepage",
-  "settings.window_behavior": "Window Behavior"
+  "settings.window_behavior": "Window Behavior",
+  "error.crypto.invalid_key_length": "Invalid key length, expected {0} bytes, got {1}",
+  "error.crypto.encrypt_failed": "Encryption failed: {0}",
+  "error.crypto.decrypt_failed": "Decryption failed: {0}",
+  "error.crypto.invalid_key": "Invalid key: {0}",
+  "error.crack.dict_error": "Dictionary file error: {0}",
+  "error.task.not_found": "Task not found",
+  "error.task.lock_error": "Task lock error: {0}",
+  "error.provider.not_found": "Provider not found",
+  "error.crack.empty_mask": "Mask is empty",
+  "settings.about.checking": "Checking...",
+  "settings.about.update_available": "New version {version} available!",
+  "settings.about.download_now": "Download now",
+  "settings.about.up_to_date": "Up to date ({version})",
+  "settings.about.update_failed": "Update check failed, please try again later"
 }

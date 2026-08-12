@@ -1,6 +1,6 @@
-use sha2::{Sha256, Sha512, Digest};
-use md5::Md5;
 use hex;
+use md5::Md5;
+use sha2::{Digest, Sha256, Sha512};
 
 /// 支持的哈希算法
 pub enum HashAlgorithm {
@@ -40,6 +40,7 @@ impl HashEngine {
     }
 
     /// 对字节切片计算哈希（兼容旧接口）
+    #[allow(dead_code)]
     pub fn hash(algo: HashAlgorithm, data: &[u8]) -> String {
         Self::hash_bytes(algo, data)
     }

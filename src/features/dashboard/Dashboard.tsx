@@ -45,8 +45,11 @@ export function Dashboard() {
   useEffect(() => {
     invokeCmd<DashboardStats>('get_dashboard_stats')
       .then(setStats)
-      .catch(() => {});
+      .catch(() => { });
   }, [historyEntries]);
+
+  // 实际历史数量 = store 中的 entries 数量
+  const historyCount = historyEntries.length;
 
   const visibleList = providers.filter(p => visibleProviders.includes(p.id));
 
@@ -61,7 +64,7 @@ export function Dashboard() {
       <motion.div variants={item} className="grid grid-cols-3 gap-4">
         <StatCard icon={Activity} value={stats.today_operations.toLocaleString()} label={t('dashboard.today_ops')} />
         <StatCard icon={CheckCircle2} value={stats.active_tasks.toString()} label={t('dashboard.activeTasks')} />
-        <StatCard icon={Clock} value={stats.history_count.toString()} label={t('dashboard.history')} />
+        <StatCard icon={Clock} value={historyCount.toString()} label={t('dashboard.history')} />
       </motion.div>
 
       {/* Provider Grid */}
@@ -138,7 +141,7 @@ export function Dashboard() {
                     <div
                       className="w-2 h-2 rounded-full shrink-0"
                       style={{
-                        backgroundColor: item.status === '成功' || item.status === '成功' ? 'var(--color-success)' : 'var(--color-text-secondary)',
+                        backgroundColor: item.status === '成功' ? 'var(--color-success)' : 'var(--color-text-secondary)',
                       }}
                     />
                     <div className="min-w-0">

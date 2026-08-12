@@ -258,7 +258,7 @@ export function CrackView() {
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }} />
           <button
-            onClick={() => useCrackStore.setState({ logs: [] })}
+            onClick={store.clearLogs}
             className="flex items-center gap-1 text-xs transition-colors"
             style={{ color: 'var(--color-text-secondary)' }}
           >

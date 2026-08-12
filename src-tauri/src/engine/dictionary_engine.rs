@@ -28,7 +28,7 @@ impl DictionaryReader {
     /// 读取下一个块（最多 max_lines 行），返回行列表和是否结束
     pub fn read_block(&mut self, max_lines: usize) -> Result<(Vec<String>, bool), String> {
         if self.cancel_flag.load(Ordering::Relaxed) {
-            return Ok((vec![], true)); // 被取消
+            return Ok((vec![], true));
         }
 
         let mut lines = Vec::with_capacity(max_lines);
@@ -38,19 +38,22 @@ impl DictionaryReader {
                 break;
             }
             line.clear();
-            let bytes = self.reader.read_line(&mut line)
+            let bytes = self
+                .reader
+                .read_line(&mut line)
                 .map_err(|e| format!("读取错误: {}", e))?;
             if bytes == 0 {
-                // 文件结束
                 break;
             }
-            // 去掉换行符
-            let trimmed = line.trim_end_matches(|c| c == '\n' || c == '\r').to_string();
+            // 去掉换行符（直接传递数组，去掉引用）
+            let trimmed = line.trim_end_matches(['\n', '\r']).to_string();
             if !trimmed.is_empty() {
                 lines.push(trimmed);
             }
         }
-        self.current_offset = self.reader.stream_position()
+        self.current_offset = self
+            .reader
+            .stream_position()
             .map_err(|e| format!("获取位置失败: {}", e))?;
         let eof = self.current_offset >= self.total_bytes;
         Ok((lines, eof))
@@ -63,7 +66,8 @@ impl DictionaryReader {
 
     /// 从指定偏移量继续读取（恢复时调用）
     pub fn seek_to(&mut self, offset: u64) -> Result<(), String> {
-        self.reader.seek(SeekFrom::Start(offset))
+        self.reader
+            .seek(SeekFrom::Start(offset))
             .map_err(|e| format!("seek 失败: {}", e))?;
         self.current_offset = offset;
         Ok(())

@@ -9,7 +9,6 @@ pub struct AppError {
 }
 
 #[derive(Debug, Serialize, Clone)]
-
 #[allow(dead_code)]
 pub enum ErrorSeverity {
     Error,
@@ -56,10 +55,12 @@ impl AppError {
 // 从标准错误转换（方便在 Service 中使用 ?）
 impl From<std::io::Error> for AppError {
     fn from(e: std::io::Error) -> Self {
-        AppError::with_params(
-            "system.io",
-            vec![e.to_string()],
-            ErrorSeverity::Error,
-        )
+        AppError::with_params("system.io", vec![e.to_string()], ErrorSeverity::Error)
+    }
+}
+// 在文件末尾添加
+impl<T> From<std::sync::PoisonError<T>> for AppError {
+    fn from(e: std::sync::PoisonError<T>) -> Self {
+        AppError::with_params("task.lock_error", vec![e.to_string()], ErrorSeverity::Error)
     }
 }

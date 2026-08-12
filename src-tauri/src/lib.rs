@@ -1,28 +1,28 @@
-mod error;
 mod commands;
-mod services;
-mod providers;
 mod engine;
-mod task;
-mod plugin;
-mod storage;
+mod error;
 mod events;
+mod plugin;
+mod providers;
+mod services;
+mod storage;
+mod task;
 mod utils;
 
-pub use services::hash_service::HashService;
 pub use services::crypto_service::CryptoService;
+pub use services::hash_service::HashService;
 
-use tauri::Manager;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
-use tauri::WindowEvent; // 使用顶层的公开导出！
+use tauri::Manager;
+use tauri::WindowEvent;
 
 use providers::registry::ProviderRegistry;
+use serde::Serialize;
+use std::collections::VecDeque;
+use std::sync::{atomic::AtomicBool, Arc, Mutex};
 use storage::db::Database;
 use task::manager::TaskManager;
-use std::collections::VecDeque;
-use std::sync::{Arc, Mutex, atomic::AtomicBool};
-use serde::Serialize;
 
 use tauri_plugin_autostart::MacosLauncher;
 
@@ -35,24 +35,30 @@ pub struct HistoryEntry {
 
 pub struct AppState {
     pub provider_registry: Mutex<ProviderRegistry>,
-    pub db: Database,
-    pub task_manager: TaskManager,
+    pub db: Arc<Database>,
+    pub task_manager: Arc<TaskManager>,
     pub history: Arc<Mutex<VecDeque<HistoryEntry>>>,
     pub privacy_mode: Arc<AtomicBool>,
 }
 
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec![])))
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec![]),
+        ))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let registry = ProviderRegistry::new();
-            let db = Database::new("cryptotool.db")
-                .expect("Failed to initialize database");
-            let task_manager = TaskManager::new();
+            let db =
+                Arc::new(Database::new("cryptotool.db").expect("Failed to initialize database"));
+            let task_manager = Arc::new(TaskManager::new());
 
             let app_handle = app.handle().clone();
+
+            // 历史记录仅内存存储，启动时为空
+            let history_entries = VecDeque::new();
 
             // 静默启动
             let args: Vec<String> = std::env::args().collect();
@@ -62,7 +68,7 @@ pub fn run() {
                 }
             }
 
-            // 托盘
+            // 托盘菜单
             let quit_i = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let show_i = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
@@ -72,7 +78,7 @@ pub fn run() {
                 .menu(&menu)
                 .on_menu_event(move |app, event| {
                     if event.id() == "quit" {
-                        std::process::exit(0);
+                        app.exit(0);
                     } else if event.id() == "show" {
                         if let Some(window) = app.get_webview_window("main") {
                             window.show().unwrap();
@@ -99,7 +105,7 @@ pub fn run() {
                 provider_registry: Mutex::new(registry),
                 db,
                 task_manager,
-                history: Arc::new(Mutex::new(VecDeque::with_capacity(100))),
+                history: Arc::new(Mutex::new(history_entries)),
                 privacy_mode: Arc::new(AtomicBool::new(false)),
             });
             Ok(())
@@ -124,6 +130,8 @@ pub fn run() {
             commands::analyzer_cmd::check_weak_password,
             commands::analyzer_cmd::check_des_weak_key,
             commands::stats_cmd::get_dashboard_stats,
+            commands::update_cmd::check_update,
+            commands::open_cmd::open_external,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

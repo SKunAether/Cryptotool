@@ -12,34 +12,18 @@ interface HistoryStore {
   init: () => void;
 }
 
-// 辅助：检查 Tauri 事件 API 是否可用
-const isEventApiReady = () => {
-  return typeof listen === 'function';
-};
+let isListening = false;
 
-export const useHistoryStore = create<HistoryStore>((set, get) => ({
-  entries: [],
+export const useHistoryStore = create<HistoryStore>((set) => ({
+  entries: [], // 初始为空
   init: () => {
-    let retries = 0;
-    const maxRetries = 30;
-    const tryListen = () => {
-      if (isEventApiReady()) {
-        listen<HistoryEntry[]>('history-update', (event) => {
-          if (Array.isArray(event.payload)) {
-            set({ entries: event.payload });
-          }
-        }).catch((err) => {
-          console.error('历史监听失败:', err);
-        });
-      } else {
-        retries++;
-        if (retries < maxRetries) {
-          setTimeout(tryListen, 200);
-        } else {
-          console.error('历史监听初始化超时');
-        }
+    if (isListening) return;
+    isListening = true;
+    listen<HistoryEntry[]>('history-update', (event) => {
+      console.log('[historyStore] 收到历史更新:', event.payload);
+      if (Array.isArray(event.payload)) {
+        set({ entries: event.payload });
       }
-    };
-    tryListen();
+    }).catch(err => console.error('历史监听失败:', err));
   },
 }));

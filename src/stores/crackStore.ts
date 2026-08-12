@@ -1,68 +1,24 @@
-import { create } from 'zustand';
-import { listen } from '@tauri-apps/api/event';
+import { useCrackConfigStore } from './crackConfigStore';
+import { useCrackTaskStore } from './crackTaskStore';
+import { useCrackLogStore } from './crackLogStore';
 import { invokeCmd } from '../api';
 
-interface CrackProgress {
-  task_id: string;
-  progress: number;
-  checked: number;
-  total: number;
-  speed: number;
-  status: string;
-  found: string | null;
-  logs: string[];
-}
+export const useCrackStore = () => {
+  const config = useCrackConfigStore();
+  const task = useCrackTaskStore();
+  const log = useCrackLogStore();
 
-interface CrackState {
-  taskId: string | null;
-  running: boolean;
-  paused: boolean;
-  progress: number;
-  checked: number;
-  total: number;
-  speed: number;
-  logs: string[];
-  found: string | null;
-  attackMode: 'mask' | 'dictionary';
-  mask: string;
-  dictPath: string;
-  algorithm: string;
-  targetHash: string;
-
-  start: () => Promise<void>;
-  stop: () => Promise<void>;
-  pause: () => Promise<void>;
-  resume: () => Promise<void>;
-  setConfig: (config: Partial<Pick<CrackState, 'attackMode' | 'mask' | 'dictPath' | 'algorithm' | 'targetHash'>>) => void;
-  reset: () => void;
-  init: () => void;
-}
-
-const initialState = {
-  taskId: null as string | null,
-  running: false,
-  paused: false,
-  progress: 0,
-  checked: 0,
-  total: 0,
-  speed: 0,
-  logs: [] as string[],
-  found: null as string | null,
-  attackMode: 'mask' as 'mask' | 'dictionary',
-  mask: '?d?d?d',
-  dictPath: '',
-  algorithm: 'md5',
-  targetHash: '',
-};
-
-export const useCrackStore = create<CrackState>((set, get) => ({
-  ...initialState,
-
-  start: async () => {
-    const { attackMode, mask, dictPath, algorithm, targetHash } = get();
+  // 启动方法
+  const start = async () => {
+    const { attackMode, mask, dictPath, algorithm, targetHash } = config;
     if (!targetHash.trim()) return;
+
+    task.resetTask();
+    log.clearLogs();
+    task.setRunning(true);
+    task.setPaused(false);
+
     try {
-      set({ running: true, paused: false, found: null, logs: [], progress: 0, checked: 0, total: 0, speed: 0 });
       let id: string;
       if (attackMode === 'mask') {
         id = await invokeCmd<string>('start_mask_crack', { mask, algorithm, targetHash: targetHash.trim() });
@@ -70,56 +26,85 @@ export const useCrackStore = create<CrackState>((set, get) => ({
         if (!dictPath.trim()) return;
         id = await invokeCmd<string>('start_dictionary_crack', { dictPath: dictPath.trim(), algorithm, targetHash: targetHash.trim() });
       }
-      set({ taskId: id });
+      task.setTaskId(id);
     } catch (err) {
       console.error('启动爆破失败:', err);
-      set({ running: false });
+      task.setRunning(false);
     }
-  },
+  };
 
-  stop: async () => {
-    const { taskId } = get();
+  const stop = async () => {
+    const { taskId } = task;
     if (taskId) {
       try { await invokeCmd('stop_crack', { taskId }); } catch (e) { console.error(e); }
     }
-    set({ running: false, paused: false, taskId: null });
-  },
+    task.setRunning(false);
+    task.setPaused(false);
+    task.setTaskId(null);
+  };
 
-  pause: async () => {
-    const { taskId } = get();
+  const pause = async () => {
+    const { taskId } = task;
     if (taskId) {
       try { await invokeCmd('pause_crack', { taskId }); } catch (e) { console.error(e); }
     }
-  },
+  };
 
-  resume: async () => {
-    const { taskId } = get();
+  const resume = async () => {
+    const { taskId } = task;
     if (taskId) {
       try { await invokeCmd('resume_crack', { taskId }); } catch (e) { console.error(e); }
     }
-  },
+  };
 
-  setConfig: (config) => set(config),
+  // 清空日志（不影响其他状态）
+  const clearLogs = () => {
+    log.clearLogs();
+  };
 
-  reset: () => set(initialState),
+  // 重置所有
+  const reset = () => {
+    config.resetConfig();
+    task.resetTask();
+    log.clearLogs();
+  };
 
-  init: () => {
-    // 全局监听 crack-update 事件
-    listen<CrackProgress>('crack-update', (event) => {
-      const data = event.payload;
-      set({
-        progress: data.progress * 100,
-        checked: data.checked,
-        total: data.total,
-        speed: data.speed,
-        logs: data.logs,
-        found: data.found ?? get().found, // 保留之前找到的密码
-        running: data.status === 'running',
-        paused: data.status === 'paused',
-      });
-      if (data.status === 'completed' || data.status === 'cancelled') {
-        set({ running: false, paused: false, taskId: null });
-      }
-    }).catch(err => console.error('crack event listener error:', err));
-  },
-}));
+  // 初始化事件监听
+  const init = () => {
+    task.initTaskListener();
+  };
+
+  return {
+    // 配置
+    attackMode: config.attackMode,
+    mask: config.mask,
+    dictPath: config.dictPath,
+    algorithm: config.algorithm,
+    targetHash: config.targetHash,
+    setConfig: config.setConfig,
+
+    // 任务状态
+    taskId: task.taskId,
+    running: task.running,
+    paused: task.paused,
+    progress: task.progress,
+    checked: task.checked,
+    total: task.total,
+    speed: task.speed,
+
+    // 日志
+    logs: task.logs,
+    found: task.found,
+
+    // 方法
+    start,
+    stop,
+    pause,
+    resume,
+    clearLogs,   // 新增
+    reset,
+    init,
+  };
+};
+
+export default useCrackStore;

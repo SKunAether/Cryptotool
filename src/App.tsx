@@ -14,13 +14,13 @@ function AppContent() {
   const { t, i18n } = useTranslation();
   const fetchProviders = useProviderStore((s) => s.fetchProviders);
   const initHistory = useHistoryStore((s) => s.init);
-  const initCrack = useCrackStore((s) => s.init);
+  const crackStore = useCrackStore();
   const initTheme = useSettingStore((s) => s.setTheme);
 
   useEffect(() => {
     fetchProviders();
     initHistory();
-    initCrack();
+    crackStore.init();
 
     try {
       const saved = localStorage.getItem('cryptotool-settings');
@@ -29,7 +29,7 @@ function AppContent() {
     } catch {
       initTheme('system');
     }
-  }, [initTheme]);
+  }, [fetchProviders, initHistory, crackStore, initTheme]);
 
   const getTitle = useCallback(
     (path: string): string => {
@@ -47,7 +47,7 @@ function AppContent() {
       }
       return 'CryptoTool';
     },
-    [t],
+    [t]
   );
 
   const [title, setTitle] = useState(getTitle(location.pathname));

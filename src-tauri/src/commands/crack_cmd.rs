@@ -1,9 +1,8 @@
-use tauri::State;
-use tauri::AppHandle;
-use crate::AppState;
 use crate::services::crack_service::CrackService;
+use crate::AppState;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use tauri::AppHandle;
+use tauri::State;
 
 #[tauri::command]
 pub async fn start_mask_crack(
@@ -13,10 +12,11 @@ pub async fn start_mask_crack(
     algorithm: String,
     target_hash: String,
 ) -> Result<String, String> {
-    let pause_flag = Arc::new(AtomicBool::new(false));
+    let pause_flag = Arc::new(std::sync::atomic::AtomicBool::new(false));
     CrackService::start_crack(
         app,
         &state.task_manager,
+        state.db.clone(), // 传递 Arc
         state.history.clone(),
         &mask,
         &algorithm,
@@ -37,7 +37,8 @@ pub async fn start_dictionary_crack(
 ) -> Result<String, String> {
     CrackService::start_dictionary_crack(
         app,
-        &state.task_manager,
+        state.task_manager.clone(),
+        state.db.clone(), // 传递 Arc
         state.history.clone(),
         &dict_path,
         &algorithm,
@@ -48,25 +49,25 @@ pub async fn start_dictionary_crack(
 }
 
 #[tauri::command]
-pub async fn stop_crack(
-    state: State<'_, AppState>,
-    task_id: String,
-) -> Result<(), String> {
-    state.task_manager.cancel_task(&task_id).map_err(|e| e.to_string())
+pub async fn stop_crack(state: State<'_, AppState>, task_id: String) -> Result<(), String> {
+    state
+        .task_manager
+        .cancel_task(&task_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn pause_crack(
-    state: State<'_, AppState>,
-    task_id: String,
-) -> Result<(), String> {
-    state.task_manager.pause_task(&task_id).map_err(|e| e.to_string())
+pub async fn pause_crack(state: State<'_, AppState>, task_id: String) -> Result<(), String> {
+    state
+        .task_manager
+        .pause_task(&task_id)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn resume_crack(
-    state: State<'_, AppState>,
-    task_id: String,
-) -> Result<(), String> {
-    state.task_manager.resume_task(&task_id).map_err(|e| e.to_string())
+pub async fn resume_crack(state: State<'_, AppState>, task_id: String) -> Result<(), String> {
+    state
+        .task_manager
+        .resume_task(&task_id)
+        .map_err(|e| e.to_string())
 }

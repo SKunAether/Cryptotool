@@ -1,7 +1,8 @@
 use rusqlite::Connection;
 
 pub fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
-    conn.execute_batch("
+    conn.execute_batch(
+        "
         CREATE TABLE IF NOT EXISTS providers (
             id          TEXT PRIMARY KEY,
             name        TEXT NOT NULL,
@@ -27,6 +28,7 @@ pub fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
             details     TEXT,
             user_id     TEXT
         );
-    ")?;
+    ",
+    )?;
     Ok(())
 }

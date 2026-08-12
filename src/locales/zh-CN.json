@@ -155,5 +155,19 @@
   "settings.general": "通用",
   "settings.display_apps": "主页面显示",
   "settings.display_apps_desc": "选择在主页顶部显示的快捷入口",
-  "settings.window_behavior": "窗口行为"
+  "settings.window_behavior": "窗口行为",
+  "error.crypto.invalid_key_length": "密钥长度无效，应为 {0} 字节，实际 {1}",
+  "error.crypto.encrypt_failed": "加密失败: {0}",
+  "error.crypto.decrypt_failed": "解密失败: {0}",
+  "error.crypto.invalid_key": "无效的密钥: {0}",
+  "error.crack.dict_error": "字典文件错误: {0}",
+  "error.task.not_found": "任务不存在",
+  "error.task.lock_error": "任务锁错误: {0}",
+  "error.provider.not_found": "Provider 未找到",
+  "error.crack.empty_mask": "掩码为空",
+  "settings.about.checking": "检查中...",
+  "settings.about.update_available": "发现新版本 {version}！",
+  "settings.about.download_now": "立即下载",
+  "settings.about.up_to_date": "已是最新版本 ({version})",
+  "settings.about.update_failed": "检查更新失败，请稍后重试"
 }

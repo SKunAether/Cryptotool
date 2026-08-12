@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "cryptotool",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "com.li-shoukun.cryptotool",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -24,18 +24,63 @@
       }
     ],
     "security": {
-      "csp": null
-    }
+      "csp": null,
+      "dangerousDisableAssetCspModification": true
+    },
+    "withGlobalTauri": false
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "deb",
+      "msi",
+      "dmg"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "copyright": "Copyright © 2026 Your Name. All rights reserved.",
+    "category": "Utility",
+    "shortDescription": "Security Computing Platform",
+    "longDescription": "CryptoTool is a modern security computing platform for cryptography and security research.",
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0",
+          "libxdo-dev",
+          "libxcb1",
+          "libx11-xcb1",
+          "libxcb1",
+          "libxcb-shape0",
+          "libxcb-xfixes0",
+          "libxkbcommon0",
+          "libwayland-client0",
+          "libwayland-cursor0",
+          "libwayland-egl1"
+        ]
+      }
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://github.com/SKunAether/Cryptotool/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDVBRDVDRjU5RDZFQUFCNkEKUldScXErcldXYy9WV2lRN3RUN2lDQS82dnN5RlJSLzB3djM5S3YyeGJ5RTh6bU8yaEVPQVRNRkgK",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
