@@ -1,0 +1,35 @@
+[package]
+name = "cryptotool"
+version = "0.1.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+[lib]
+name = "cryptotool_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+cryptotool-plugin-sdk = { path = "../plugin-sdk" }
+sha2 = "0.10"
+md-5 = "0.10"
+hex = "0.4"
+aes-gcm = "0.10"
+rand = "0.8"
+base64 = "0.22"
+rusqlite = { version = "0.31", features = ["bundled"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4"] }
+rayon = "1.10"   
+tauri-plugin-opener = "2.0.0"
+tauri-plugin-dialog = "2.7.2"
+
+# 【绝杀点】：把自启动插件直接从 GitHub 拉取，彻底绕过 crates.io 的网络超时问题！
+tauri-plugin-autostart = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v2" }

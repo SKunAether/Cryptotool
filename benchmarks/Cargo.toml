@@ -1,0 +1,13 @@
+[package]
+name = "cryptotool-benchmarks"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cryptotool = { path = "../src-tauri" }
+criterion = "0.5"
+
+[[bench]]
+name = "hash_bench"
+harness = false
+path = "src/benches/hash_bench.rs"

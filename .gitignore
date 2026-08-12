@@ -1,0 +1,101 @@
+# =====================
+#  Logs
+# =====================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# =====================
+#  Node.js / pnpm
+# =====================
+node_modules/
+dist/
+dist-ssr/
+*.local
+*.pid
+*.seed
+*.pid.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# =====================
+#  Rust / Cargo
+# =====================
+/target/
+**/*.rs.bk
+*.pdb
+*.dll
+*.so
+*.dylib
+*.a
+*.rlib
+
+# =====================
+#  Tauri
+# =====================
+src-tauri/target/
+src-tauri/out/
+src-tauri/.tauri/
+src-tauri/gen/          # 【新增】Tauri 自动生成的 JSON Schema
+src-tauri/capabilities/*.json
+!src-tauri/capabilities/default.json
+
+# Build artifacts
+*.o
+*.wasm
+
+# =====================
+#  IDE / Editor
+# =====================
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.code-workspace
+
+# =====================
+#  OS / System
+# =====================
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+*.temp
+
+# =====================
+#  Test / Coverage
+# =====================
+coverage/
+*.lcov
+*.gcda
+*.gcno
+
+# =====================
+#  Databases (SQLite)
+# =====================
+*.sqlite
+*.db
+*.db-journal
+
+# =====================
+#  Sensitive / Security
+# =====================
+private/
+secrets/
+*.key
+*.pem
+*.crt
+*.der

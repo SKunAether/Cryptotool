@@ -1,0 +1,8 @@
+[
+  {
+    "key": "0000000000000000000000000000000000000000000000000000000000000000",
+    "plaintext": "00000000000000000000000000000000",
+    "ciphertext_prefix": "cea3d0e9",
+    "note": "AES-256-GCM test vector from NIST (simplified, nonce=0x000000000000000000000000, plaintext=16 zero bytes)"
+  }
+]
