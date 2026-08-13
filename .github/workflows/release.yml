@@ -3,7 +3,6 @@ on:
   push:
     tags:
       - 'v*'
-  # 手动触发发版（可选，方便测试）
   workflow_dispatch:
 permissions:
   contents: write
@@ -38,7 +37,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # pnpm + Node 环境
+      # 1. 提前安装Rust（必须放在apt之前，避免编译阶段缺库）
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Rust build artifacts
+        uses: swatinem/rust-cache@v2
+
+      # 2. Node + pnpm
       - uses: pnpm/action-setup@v2
         with:
           version: 8
@@ -47,23 +52,18 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
-      # 新增：Rust 工具链 + 缓存，大幅提速
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Cache Rust
-        uses: swatinem/rust-cache@v2
-
-      # ========== Ubuntu 24.04 专用依赖（修复你本地编译报错全套） ==========
-      - name: Install Ubuntu 24.04 Tauri Dependencies
+      # ========== 关键修复：Ubuntu24.04完整依赖，包含libglib2.0-dev ==========
+      - name: Install all Tauri & GLib dev packages
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            build-essential \
+            libglib2.0-dev \
+            libgtk-3-dev \
             libwebkit2gtk-4.1-dev \
             libjavascriptcoregtk-4.1-dev \
-            libgtk-3-dev \
-            libxdo-dev \
-            libglib2.0-dev \
             libpango1.0-dev \
             libcairo2-dev \
             libgdk-pixbuf2.0-dev \
@@ -71,12 +71,14 @@ jobs:
             libsoup3.0-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
-            build-essential \
-            pkg-config
+            libxdo-dev \
+            patchelf \
+            file
+          # 全局注入PKG_CONFIG_PATH到整个job环境，所有编译步骤生效
           echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu:/usr/share/pkgconfig" >> $GITHUB_ENV
 
-      # Tauri 打包并上传到 Release
-      - name: Build and upload release assets
+      # 3. Tauri打包上传（环境变量已经全局注入，不再局部重复）
+      - name: Build & upload release assets
         uses: tauri-apps/tauri-action@v0
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
@@ -85,4 +87,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu:/usr/share/pkgconfig
