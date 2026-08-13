@@ -4,21 +4,26 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: write
+
 jobs:
   create-release:
     runs-on: ubuntu-22.04
     outputs:
-      release_id: ${{ steps.create-release.outputs.result }}
+      release_id: ${{ steps.create_rel.output.id }}
+      tag_name: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
       - name: Create Release
-        id: create-release
+        id: create_rel
         uses: actions/github-script@v6
         with:
           script: |
-            const { data: release } = await github.rest.repos.createRelease({
+            const { data } = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: context.ref.replace('refs/tags/', ''),
@@ -26,7 +31,7 @@ jobs:
               draft: false,
               prerelease: false
             });
-            return release.id;
+            return { id: data.id };
 
   build:
     needs: create-release
@@ -38,12 +43,12 @@ jobs:
       - uses: actions/checkout@v4
 
       # Rust
-      - name: Install Rust stable
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Rust
         uses: swatinem/rust-cache@v2
 
-      # Node pnpm
+      # Node & pnpm
       - uses: pnpm/action-setup@v2
         with:
           version: 8
@@ -53,54 +58,74 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install
 
-      # Ubuntu22.04 官方标准依赖（和cc-switch对齐）
-      - name: Install Linux Build Deps
+      # Ubuntu22.04 安装GLib全套（关键：22.04才有独立gobject/gio开发包）
+      - name: Install Linux Build Libs
         if: matrix.os == 'ubuntu-22.04'
         run: |
+          set -e
           sudo add-apt-repository universe -y
           sudo apt update -y
-          sudo apt install -y \
-            pkg-config build-essential \
+          sudo apt install -y --no-install-recommends \
+            pkg-config build-essential file patchelf \
             libglib2.0-dev libgobject-2.0-dev libgio-2.0-dev \
             libgtk-3-dev libwebkit2gtk-4.0-dev libjavascriptcoregtk-4.0-dev \
             libpango1.0-dev libcairo2-dev libgdk-pixbuf2.0-dev libatk1.0-dev \
-            libsoup2.4-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf
+            libsoup2.4-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
           export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu:/usr/share/pkgconfig
+          # 校验包是否正常识别
           pkg-config --modversion glib-2.0 gobject-2.0 gio-2.0
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
 
-      # 不使用tauri-action，原生打包（关键：环境变量完整继承）
-      - name: Build Linux App
+      # Linux 原生打包，不再使用tauri-action
+      - name: Build Linux
         if: matrix.os == 'ubuntu-22.04'
         env:
-          PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu:/usr/share/pkgconfig
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --bundles appimage,deb
 
+      # Windows
       - name: Build Windows
         if: matrix.os == 'windows-latest'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build
 
+      # Mac
       - name: Build Mac
         if: matrix.os == 'macos-latest'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --target universal-apple-darwin
 
-      # 上传产物到release
-      - name: Upload Assets
+      # 上传产物到临时工件
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-bundle
+          path: |
+            src-tauri/target/release/bundle/**/*.AppImage
+            src-tauri/target/release/bundle/**/*.deb
+            src-tauri/target/release/bundle/**/*.msi
+            src-tauri/target/release/bundle/**/*.dmg
+
+  # 汇总所有文件上传到Release
+  upload-release:
+    needs: [create-release, build]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Collect Assets
+        run: |
+          mkdir assets
+          find . -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.msi" -o -name "*.dmg" \) -exec mv {} assets/ \;
+      - name: Publish to Release
         uses: softprops/action-gh-release@v1
         with:
-          release_id: ${{ needs.create-release.outputs.result }}
-          files: |
-            src-tauri/target/release/bundle/appimage/*.AppImage
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/msi/*.msi
-            src-tauri/target/release/bundle/dmg/*.dmg
+          release_id: ${{ needs.create-release.outputs.release_id }}
+          files: assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
