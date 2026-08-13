@@ -31,12 +31,16 @@ hex = "0.4"
 aes-gcm = "0.10"
 rand = "0.8"
 base64 = "0.22"
-rusqlite = { version = "0.31", features = ["bundled", "chrono"] }   # 添加 chrono 特性
+rusqlite = { version = "0.31", features = ["bundled", "chrono"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
-rayon = "1.10"   
+rayon = "1.10"
 tauri-plugin-opener = "2.0.0"
 tauri-plugin-dialog = "2.7.2"
 tauri-plugin-autostart = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v2" }
 zeroize = "1"
 tempfile = "3"
+# 兜底降级glib系列，依然报错就取消下面三行注释
+# glib-sys = "0.17"
+# gobject-sys = "0.17"
+# gio-sys = "0.17"
