@@ -1,63 +1,34 @@
 name: Release
 
-
 on:
+  workflow_dispatch:          # 允许手动触发
   push:
     tags:
       - "v*"
 
-
 permissions:
   contents: write
 
-
 jobs:
-
   release:
-
     strategy:
-
       fail-fast: false
-
       matrix:
-
         include:
-
           - platform: ubuntu-latest
-
           - platform: windows-latest
-
           - platform: macos-latest
-
-
     runs-on: ${{ matrix.platform }}
 
-
-
     steps:
-
-
-      # -----------------------
-      # Checkout
-      # -----------------------
-
       - name: Checkout
         uses: actions/checkout@v4
 
-
-
-
-      # -----------------------
-      # Linux dependencies
-      # -----------------------
-
+      # ========== Linux 依赖 ==========
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-latest'
-
         run: |
-
           sudo apt update
-
           sudo apt install -y \
             libwebkit2gtk-4.1-dev \
             libgtk-3-dev \
@@ -66,127 +37,46 @@ jobs:
             libglib2.0-dev \
             pkg-config
 
-
-
-
-      # -----------------------
-      # Node
-      # -----------------------
-
+      # ========== Node.js ==========
       - name: Setup Node
-
         uses: actions/setup-node@v4
-
         with:
+          node-version: 22
 
-          node-version: 20
-
-          cache: pnpm
-
-
-
-
-      # -----------------------
-      # Enable Corepack
-      # -----------------------
-
-      - name: Enable Corepack
-
-        run: |
-
-          corepack enable
-
-
-
-
-      # -----------------------
-      # Setup pnpm
-      # -----------------------
-
+      # ========== pnpm（必须在任何 pnpm 命令之前） ==========
       - name: Setup pnpm
-
         uses: pnpm/action-setup@v4
-
         with:
-
           version: 9
 
-          run_install: false
-
-
-
-
-      # -----------------------
-      # Rust
-      # -----------------------
-
+      # ========== Rust ==========
       - name: Setup Rust
-
         uses: dtolnay/rust-toolchain@stable
 
-
-
-
       - name: Rust cache
-
         uses: Swatinem/rust-cache@v2
 
-
-
-
-      # -----------------------
-      # Install frontend
-      # -----------------------
-
+      # ========== 安装前端依赖 ==========
       - name: Install dependencies
-
         run: |
-
           pnpm install --frozen-lockfile
 
-
-
-
-      # -----------------------
-      # Verify Tauri CLI
-      # -----------------------
-
+      # ========== 验证 Tauri CLI 可用 ==========
       - name: Check Tauri CLI
-
         run: |
-
           pnpm tauri --version
 
-
-
-
-      # -----------------------
-      # Build
-      # -----------------------
-
+      # ========== 构建并上传到 Release ==========
       - name: Build Tauri app
-
         uses: tauri-apps/tauri-action@v0
-
         env:
-
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
-
         with:
-
           tagName: ${{ github.ref_name }}
-
           releaseName: "CryptoTool ${{ github.ref_name }}"
-
           releaseBody: |
-
             CryptoTool desktop release.
-
           releaseDraft: false
-
           prerelease: false
