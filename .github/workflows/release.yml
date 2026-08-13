@@ -45,6 +45,8 @@ jobs:
         with:
           node-version: 20
           cache: 'pnpm'
+
+      # ========== Linux 依赖（保持不变） ==========
       - name: Install Ubuntu dependencies
         if: matrix.os == 'ubuntu-22.04'
         run: |
@@ -62,6 +64,13 @@ jobs:
             libjavascriptcoregtk-4.1-dev \
             pkg-config
           echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
+
+      # ========== ★ 关键修复：macOS 手动安装 Tauri CLI ==========
+      - name: Install Tauri CLI (macOS)
+        if: matrix.os == 'macos-latest'
+        run: pnpm add -D @tauri-apps/cli@next
+
+      # ========== 构建 ==========
       - name: Build and upload
         uses: tauri-apps/tauri-action@v0
         with:
