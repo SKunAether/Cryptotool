@@ -20,6 +20,11 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+# 强制降级，解决0.18严苛校验bug，和cc-switch兼容逻辑一致
+glib-sys = "0.17"
+gobject-sys = "0.17"
+gio-sys = "0.17"
+
 tauri = { version = "2", features = ["tray-icon"] }
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
@@ -40,7 +45,3 @@ tauri-plugin-dialog = "2.7.2"
 tauri-plugin-autostart = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v2" }
 zeroize = "1"
 tempfile = "3"
-# 兜底降级glib系列，依然报错就取消下面三行注释
-# glib-sys = "0.17"
-# gobject-sys = "0.17"
-# gio-sys = "0.17"
