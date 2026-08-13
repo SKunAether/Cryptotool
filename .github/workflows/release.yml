@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          # 移除 cache 选项，因为项目没有 package-lock.json
 
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
