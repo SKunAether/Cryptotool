@@ -1,9 +1,8 @@
 [env]
-PKG_CONFIG_PATH = "/usr/lib/x86_64-linux-gnu:/usr/share/pkgconfig"
-PKG_CONFIG_LIBDIR = "/usr/lib/x86_64-linux-gnu/pkgconfig"
-GLIB_2.0_NO_PKG_CONFIG = "0"
-GOBJECT_2.0_NO_PKG_CONFIG = "0"
-GIO_2.0_NO_PKG_CONFIG = "0"
+# 直接开启静态编译，跳过pkg-config检索，cc-switch核心方案
+GLIB_2.0_NO_PKG_CONFIG = "1"
+GOBJECT_2.0_NO_PKG_CONFIG = "1"
+GIO_2.0_NO_PKG_CONFIG = "1"
 
 [package]
 name = "cryptotool"
@@ -20,11 +19,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-# 强制锁定低版本，覆盖自动更新
-glib-sys = "=0.17.0"
-gobject-sys = "=0.17.0"
-gio-sys = "=0.17.0"
-
 tauri = { version = "2", features = ["tray-icon"] }
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
