@@ -1,133 +1,162 @@
 name: Release
+
+
 on:
+
   push:
+
     tags:
-      - 'v*'
-  workflow_dispatch
-concurrency:
-  group: release-${{ github.ref_name }}
-  cancel-in-progress: true
+
+      - "v*"
+
+
+
 permissions:
+
   contents: write
 
+
+
 jobs:
-  create-release:
-    runs-on: ubuntu-22.04
-    outputs:
-      release_tag: ${{ github.ref_name }}
-      release_id: ${{ steps.create_rel.output.id }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Create empty GitHub Release
-        id: create_rel
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { data } = await github.rest.repos.createRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag_name: context.ref.replace('refs/tags/', ''),
-              name: context.ref.replace('refs/tags/', ''),
-              draft: false,
-              prerelease: false
-            });
-            return { id: data.id };
 
-  build-all-platforms:
-    needs: create-release
+  release:
+
+
     strategy:
+
+      fail-fast: false
+
       matrix:
-        os: [ubuntu-22.04, windows-latest, macos-14]
-    runs-on: ${{ matrix.os }}
+
+        include:
+
+          - platform: ubuntu-latest
+
+          - platform: windows-latest
+
+          - platform: macos-latest
+
+
+
+    runs-on: ${{ matrix.platform }}
+
+
+
     steps:
-      - uses: actions/checkout@v4
 
-      # Rust Toolchain
-      - name: Setup Rust stable
-        uses: dtolnay/rust-toolchain@stable
-      - name: Cache Rust build artifacts
-        uses: swatinem/rust-cache@v2
 
-      # Node & pnpm
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 10.12.3
-      - name: Setup Node.js
+      # ==========================
+      # Checkout
+      # ==========================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+
+
+      # ==========================
+      # Linux dependencies
+      # ==========================
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+
+          sudo apt update
+
+          sudo apt install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libglib2.0-dev \
+            pkg-config
+
+
+
+
+      # ==========================
+      # Node
+      # ==========================
+      - name: Setup Node
         uses: actions/setup-node@v4
+
         with:
+
           node-version: 20
-          cache: 'pnpm'
-      - run: pnpm install --no-frozen-lockfile
 
-      # ========== Linux 原版cc-switch完整安装+构建同脚本 ==========
-      - name: Build Linux x86_64 (ubuntu-22.04)
-        if: matrix.os == 'ubuntu-22.04'
-        shell: bash
-        run: |
-          set -euxo pipefail
-          # 系统源更新 & 基础编译工具
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config curl wget file patchelf libssl-dev rpm flatpak flatpak-builder elfutils xdg-utils
-          # GTK + GLIB 核心开发包（runner自带glib全套pc文件，不用手动重装三件套）
-          sudo apt-get install -y --no-install-recommends libgtk-3-dev librsvg2-dev libayatana-appindicator3-dev
-          # WebKit 4.1失败自动切4.0（cc原版容错）
-          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev || sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.0-dev
-          # libsoup3失败自动切2.4（cc原版容错）
-          sudo apt-get install -y --no-install-recommends libsoup-3.0-dev || sudo apt-get install -y --no-install-recommends libsoup2.4-dev
 
-          # 校验pkg-config可正常识别glib（cc调试逻辑）
-          pkg-config --modversion glib-2.0 gobject-2.0 gio-2.0
 
-          # 直接同shell构建，环境完整继承
-          TAURI_SIGNING_PRIVATE_KEY=${{ secrets.TAURI_SIGNING_PRIVATE_KEY }} \
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD=${{ secrets.TAURI_SIGNING_PRIVATE_KEY }} \
-          pnpm tauri build --bundles appimage,deb,rpm
 
-      # macOS 通用架构构建
-      - name: Build macOS universal
-        if: matrix.os == 'macos-14'
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: pnpm tauri build --target universal-apple-darwin
+      # ==========================
+      # pnpm
+      # ==========================
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
-      # Windows构建
-      - name: Build Windows
-        if: matrix.os == 'windows-latest'
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: pnpm tauri build
-
-      # 上传当前平台产物到CI工件
-      - name: Upload platform bundle artifact
-        uses: actions/upload-artifact@v7
         with:
-          name: bundle-${{ matrix.os }}
-          path: |
-            src-tauri/target/release/bundle/**/*.AppImage
-            src-tauri/target/release/bundle/**/*.deb
-            src-tauri/target/release/bundle/**/*.rpm
-            src-tauri/target/release/bundle/**/*.msi
-            src-tauri/target/release/bundle/**/*.dmg
 
-  # 统一收集所有平台文件上传Release（cc标准流程）
-  publish-release-assets:
-    needs: [create-release, build-all-platforms]
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/download-artifact@v8
-      - name: Merge all installers to assets folder
+          version: 9
+
+
+
+
+      # ==========================
+      # Rust
+      # ==========================
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+
+
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+
+
+
+      # ==========================
+      # Frontend
+      # ==========================
+      - name: Install dependencies
+
         run: |
-          mkdir -p release-assets
-          find . -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.msi" -o -name "*.dmg" \) -exec mv {} release-assets/ \;
-          ls -la release-assets
-      - name: Upload assets to GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          release_id: ${{ needs.create-release.outputs.release_id }}
-          files: release-assets/*
+
+          pnpm install
+
+
+
+
+      - name: Build frontend
+
+        run: |
+
+          pnpm build
+
+
+
+
+      # ==========================
+      # Tauri Build
+      # ==========================
+      - name: Build Tauri App
+
+        uses: tauri-apps/tauri-action@v0
+
         env:
+
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+        with:
+
+          tagName: ${{ github.ref_name }}
+
+          releaseName: "CryptoTool ${{ github.ref_name }}"
+
+          releaseBody: |
+
+            CryptoTool desktop application release.
+
+          releaseDraft: false
+
+          prerelease: false
