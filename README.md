@@ -111,19 +111,19 @@ CryptoTool/
 
 ## 🤝 Contributing
 
-We welcome contributions! Please read [CONTRIBUTING.md](https://contributing.md/) for guidelines.
+We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📝 Changelog
 
-See [CHANGELOG.md](https://changelog.md/) for release history.
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## 🗺️ Roadmap
 
-See [ROADMAP.md](https://roadmap.md/) for future development plans.
+See [ROADMAP.md](ROADMAP.md) for future development plans.
 
 ## 📄 License
 
-This project is licensed under the MIT License – see the [LICENSE](https://license/) file for details.
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgements
 
