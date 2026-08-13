@@ -1,5 +1,5 @@
 [env]
-# 直接开启静态编译，跳过pkg-config检索，cc-switch核心方案
+# 核心开关：关闭pkg-config检索，静态编译内置glib源码
 GLIB_2.0_NO_PKG_CONFIG = "1"
 GOBJECT_2.0_NO_PKG_CONFIG = "1"
 GIO_2.0_NO_PKG_CONFIG = "1"
