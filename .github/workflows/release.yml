@@ -37,13 +37,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1. 提前安装Rust（必须放在apt之前，避免编译阶段缺库）
+      # Rust 前置
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Rust build artifacts
         uses: swatinem/rust-cache@v2
 
-      # 2. Node + pnpm
+      # Node & pnpm
       - uses: pnpm/action-setup@v2
         with:
           version: 8
@@ -52,12 +52,15 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
-      # ========== 关键修复：Ubuntu24.04完整依赖，包含libglib2.0-dev ==========
-      - name: Install all Tauri & GLib dev packages
+      # ========== 核心修复段：Ubuntu 24.04 ==========
+      - name: Fix Ubuntu repo + install full GLib/GTK dev
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends \
+          # 1. 启用universe仓库（关键！默认关闭导致找不到dev包）
+          sudo add-apt-repository universe -y
+          sudo apt update -y
+          # 2. 一次性安装全套GLib/GIO/GObject + Tauri依赖
+          sudo apt install -y --no-install-recommends \
             pkg-config \
             build-essential \
             libglib2.0-dev \
@@ -74,10 +77,17 @@ jobs:
             libxdo-dev \
             patchelf \
             file
-          # 全局注入PKG_CONFIG_PATH到整个job环境，所有编译步骤生效
+          # 3. 同脚本内临时导出PKG_CONFIG_PATH，子进程编译可继承
+          export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu:/usr/share/pkgconfig"
+          # 4. 校验pc文件是否存在（打印日志方便排错）
+          echo "==== pkg-config 校验 ===="
+          pkg-config --exists glib-2.0 gobject-2.0 gio-2.0
+          pkg-config --list-all | grep -E "glib|gobject|gio"
+          echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+          # 5. 全局写入job环境，后续tauri-action也能读到
           echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu:/usr/share/pkgconfig" >> $GITHUB_ENV
 
-      # 3. Tauri打包上传（环境变量已经全局注入，不再局部重复）
+      # Tauri 打包
       - name: Build & upload release assets
         uses: tauri-apps/tauri-action@v0
         with:
