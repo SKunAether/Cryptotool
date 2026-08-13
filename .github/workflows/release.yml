@@ -62,7 +62,6 @@ jobs:
             libjavascriptcoregtk-4.1-dev \
             pkg-config
           echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig" >> $GITHUB_ENV
-        shell: bash
       - name: Build and upload
         uses: tauri-apps/tauri-action@v0
         with:
